@@ -1,0 +1,119 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+.app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: #ffffff;
+  color: #333;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+/* Sidebar Container with Resize Handle */
+.sidebar-container {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.2s;
+  z-index: 10;
+}
+
+.resize-handle:hover,
+.app.resizing .resize-handle {
+  background: #4a90e2;
+}
+
+.app.resizing {
+  cursor: col-resize;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #faf8f5;
+  min-width: 0;
+}
+
+/* Header Section with Vertical Resize */
+.header-section-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.header-section {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+  min-height: 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.header-resize-handle {
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 10px;
+  cursor: row-resize;
+  background: rgba(74, 144, 226, 0.3);
+  z-index: 100;
+}
+
+.header-resize-handle:hover {
+  background: rgba(74, 144, 226, 0.6);
+}
+
+.header-resize-handle:active,
+.app.resizing .header-resize-handle {
+  background: #4a90e2;
+}
+
+.app-header {
+  padding: 8px 24px 0;
+  text-align: center;
+  flex-shrink: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #3a3a3a;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.02em;
+}
+
+.app-subtitle {
+  font-size: 0.95em;
+  color: #666;
+  margin: 0;
+}
+
+.header-controls {
+  padding: 8px 24px 16px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}

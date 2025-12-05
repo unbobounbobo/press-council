@@ -1,0 +1,76 @@
+.stage3 {
+  background: #f0fff0;
+  border-color: #c8e6c8;
+}
+
+.final-response {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 6px;
+  border: 1px solid #c8e6c8;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e8f5e8;
+}
+
+.editor-label {
+  color: #2d8a2d;
+  font-size: 13px;
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.final-text {
+  color: #333;
+  line-height: 1.7;
+  font-size: 15px;
+}
+
+/* Error state */
+.final-response.error {
+  background: #fff5f5;
+  border-color: #ffcdd2;
+}
+
+.final-response.error .editor-label {
+  color: #c62828;
+  border-bottom-color: #ffcdd2;
+}
+
+.error-content {
+  text-align: center;
+  padding: 24px;
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.error-message {
+  color: #c62828;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.credit-link {
+  display: inline-block;
+  background: #1976d2;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.credit-link:hover {
+  background: #1565c0;
+}
