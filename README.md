@@ -1,10 +1,12 @@
-![Generated Image December 02, 2025 - 9_13PM](https://github.com/user-attachments/assets/25c6fc45-d19d-4d42-b570-1cd27164dca1)
+![Generated Image December 02, 2025 - 9_13PM](https://github.com/user-attachments/assets/e3ea549f-9694-4ebd-8e66-cb5f9dbf850f)
 
 # Press Council
 
 複数のAIが原稿を作成し、記者視点で評価・ランキング・最終版を生成するプレスリリース作成支援ツール
 
 ## 概要
+
+![Generated Image December 04, 2025 - 6_31PM](https://github.com/user-attachments/assets/97f3fa78-2da5-4820-aab1-23b1f3ceaf31)
 
 Press Councilは3段階のワークフローでプレスリリースを作成します：
 
@@ -66,6 +68,8 @@ npm run dev
 ブラウザで http://localhost:5173 を開く
 
 ## 使い方
+
+<img width="1170" height="970" alt="スクリーンショット 2025-12-04 211416" src="https://github.com/user-attachments/assets/4049d2aa-df88-49ee-ab32-0c9f811be701" />
 
 1. 「+ 新規作成」をクリック
 2. プリセットを選択（シンプル / おすすめ / フル）
