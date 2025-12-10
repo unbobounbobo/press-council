@@ -22,6 +22,7 @@ frontend/.vite/
 
 # Development files
 mockups/
+design/
 nul
 start.bat
 *.log
