@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useAuth } from './contexts/AuthContext';
+import { Auth } from './components/Auth';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import { ModeSelector } from './components/ModeSelector';
 import { api } from './api';
 import './App.css';
 
-function App() {
+// Main application content (only rendered when authenticated)
+function MainApp() {
+  const { user, signOut, profile } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
@@ -81,7 +85,6 @@ function App() {
   // Header resize handlers (vertical)
   const handleHeaderMouseDown = useCallback((e) => {
     e.preventDefault();
-    console.log('Header resize started', e.clientY);
     setIsResizingHeader(true);
     headerResizeRef.current = e.clientY;
   }, []);
@@ -179,7 +182,6 @@ function App() {
       abortControllerRef.current = null;
       setIsLoading(false);
 
-      // Mark the last message as cancelled
       setCurrentConversation((prev) => {
         if (!prev) return prev;
         const messages = [...prev.messages];
@@ -196,19 +198,16 @@ function App() {
   const handleSendMessage = async (content) => {
     if (!currentConversationId) return;
 
-    // Create new AbortController for this request
     abortControllerRef.current = new AbortController();
 
     setIsLoading(true);
     try {
-      // Optimistically add user message to UI
       const userMessage = { role: 'user', content };
       setCurrentConversation((prev) => ({
         ...prev,
         messages: [...prev.messages, userMessage],
       }));
 
-      // Create a partial assistant message that will be updated progressively
       const assistantMessage = {
         role: 'assistant',
         stage1: null,
@@ -223,13 +222,11 @@ function App() {
         },
       };
 
-      // Add the partial assistant message
       setCurrentConversation((prev) => ({
         ...prev,
         messages: [...prev.messages, assistantMessage],
       }));
 
-      // Build options from current config
       const options = {
         content,
         mode: pressConfig.mode,
@@ -239,7 +236,6 @@ function App() {
         criticismLevel: pressConfig.criticismLevel,
       };
 
-      // Send message with streaming
       await api.createPressReleaseStream(
         currentConversationId,
         options,
@@ -316,12 +312,10 @@ function App() {
               break;
 
             case 'title_complete':
-              // Reload conversations to get updated title
               loadConversations();
               break;
 
             case 'complete':
-              // Stream complete, update metadata
               setCurrentConversation((prev) => {
                 const messages = [...prev.messages];
                 const lastMsg = messages[messages.length - 1];
@@ -346,13 +340,11 @@ function App() {
         abortControllerRef.current?.signal
       );
     } catch (error) {
-      // Handle abort separately - don't show error
       if (error.name === 'AbortError') {
         console.log('Request was cancelled');
         return;
       }
       console.error('Failed to send message:', error);
-      // Remove optimistic messages on error
       setCurrentConversation((prev) => ({
         ...prev,
         messages: prev.messages.slice(0, -2),
@@ -382,10 +374,19 @@ function App() {
         <div className="header-section-wrapper" style={{ height: headerHeight }}>
           <div className="header-section">
             <header className="app-header">
-              <h1 className="app-title">Press Council</h1>
-              <p className="app-subtitle">
-                複数のAIが原稿を作成し、記者視点で評価・ランキング・最終版を生成
-              </p>
+              <div className="app-header-top">
+                <div>
+                  <h1 className="app-title">Press Council</h1>
+                  <p className="app-subtitle">
+                    複数のAIが原稿を作成し、記者視点で評価・ランキング・最終版を生成
+                  </p>
+                </div>
+                <div className="user-menu">
+                  <span className="user-email">{user?.email}</span>
+                  {profile?.is_admin && <span className="admin-badge">Admin</span>}
+                  <button onClick={signOut} className="sign-out-btn">ログアウト</button>
+                </div>
+              </div>
             </header>
             <div className="header-controls">
               <ModeSelector
@@ -409,6 +410,25 @@ function App() {
       </div>
     </div>
   );
+}
+
+// App wrapper that handles authentication
+function App() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="auth-loading">
+        <div className="auth-loading-spinner"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Auth />;
+  }
+
+  return <MainApp />;
 }
 
 export default App;

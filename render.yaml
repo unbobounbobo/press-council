@@ -1,0 +1,35 @@
+# Render Blueprint - Press Council
+# https://render.com/docs/blueprint-spec
+
+services:
+  # Backend - FastAPI
+  - type: web
+    name: press-council-api
+    runtime: python
+    region: singapore  # 東京に近い
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false  # 手動設定
+      - key: PYTHON_VERSION
+        value: "3.11"
+
+  # Frontend - React/Vite
+  - type: web
+    name: press-council-web
+    runtime: static
+    region: singapore
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
