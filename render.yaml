@@ -14,7 +14,7 @@ services:
       - key: OPENROUTER_API_KEY
         sync: false  # 手動設定
       - key: PYTHON_VERSION
-        value: "3.11"
+        value: "3.11.7"
 
   # Frontend - React/Vite
   - type: web
