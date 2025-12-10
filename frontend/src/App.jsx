@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { Auth } from './components/Auth';
-import Sidebar from './components/Sidebar';
-import ChatInterface from './components/ChatInterface';
 import { ModeSelector } from './components/ModeSelector';
+import ChatInterface from './components/ChatInterface';
 import { api } from './api';
 import './App.css';
 
@@ -15,22 +14,6 @@ function MainApp() {
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const abortControllerRef = useRef(null);
-
-  // Sidebar resize state
-  const [sidebarWidth, setSidebarWidth] = useState(() => {
-    const saved = localStorage.getItem('sidebarWidth');
-    return saved ? parseInt(saved, 10) : 260;
-  });
-  const [isResizing, setIsResizing] = useState(false);
-  const resizeRef = useRef(null);
-
-  // Header resize state (vertical)
-  const [headerHeight, setHeaderHeight] = useState(() => {
-    const saved = localStorage.getItem('headerHeight');
-    return saved ? parseInt(saved, 10) : 500;
-  });
-  const [isResizingHeader, setIsResizingHeader] = useState(false);
-  const headerResizeRef = useRef(null);
 
   // Configuration state
   const [pressConfig, setPressConfig] = useState({
@@ -45,81 +28,6 @@ function MainApp() {
   useEffect(() => {
     loadConversations();
   }, []);
-
-  // Sidebar resize handlers
-  const handleMouseDown = useCallback((e) => {
-    setIsResizing(true);
-    resizeRef.current = e.clientX;
-  }, []);
-
-  const handleMouseMove = useCallback((e) => {
-    if (!isResizing) return;
-    const diff = e.clientX - resizeRef.current;
-    const newWidth = Math.min(Math.max(180, sidebarWidth + diff), 500);
-    setSidebarWidth(newWidth);
-    resizeRef.current = e.clientX;
-  }, [isResizing, sidebarWidth]);
-
-  const handleMouseUp = useCallback(() => {
-    if (isResizing) {
-      setIsResizing(false);
-      localStorage.setItem('sidebarWidth', sidebarWidth.toString());
-    }
-  }, [isResizing, sidebarWidth]);
-
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    }
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-  }, [isResizing, handleMouseMove, handleMouseUp]);
-
-  // Header resize handlers (vertical)
-  const handleHeaderMouseDown = useCallback((e) => {
-    e.preventDefault();
-    setIsResizingHeader(true);
-    headerResizeRef.current = e.clientY;
-  }, []);
-
-  const handleHeaderMouseMove = useCallback((e) => {
-    if (!isResizingHeader) return;
-    const diff = e.clientY - headerResizeRef.current;
-    const newHeight = Math.min(Math.max(50, headerHeight + diff), 900);
-    setHeaderHeight(newHeight);
-    headerResizeRef.current = e.clientY;
-  }, [isResizingHeader, headerHeight]);
-
-  const handleHeaderMouseUp = useCallback(() => {
-    if (isResizingHeader) {
-      setIsResizingHeader(false);
-      localStorage.setItem('headerHeight', headerHeight.toString());
-    }
-  }, [isResizingHeader, headerHeight]);
-
-  useEffect(() => {
-    if (isResizingHeader) {
-      document.addEventListener('mousemove', handleHeaderMouseMove);
-      document.addEventListener('mouseup', handleHeaderMouseUp);
-      document.body.style.cursor = 'row-resize';
-      document.body.style.userSelect = 'none';
-    }
-    return () => {
-      document.removeEventListener('mousemove', handleHeaderMouseMove);
-      document.removeEventListener('mouseup', handleHeaderMouseUp);
-      if (!isResizing) {
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-      }
-    };
-  }, [isResizingHeader, handleHeaderMouseMove, handleHeaderMouseUp, isResizing]);
 
   // Load conversation details when selected
   useEffect(() => {
@@ -164,6 +72,7 @@ function MainApp() {
   };
 
   const handleDeleteConversation = async (id) => {
+    if (!window.confirm('この会話を削除しますか？')) return;
     try {
       await api.deleteConversation(id);
       setConversations(conversations.filter(c => c.id !== id));
@@ -355,61 +264,113 @@ function MainApp() {
     }
   };
 
+  // Color for conversation index
+  const getIndexColor = (index) => {
+    const colors = ['blue', 'orange', 'green', 'purple', 'pink'];
+    return colors[index % colors.length];
+  };
+
   return (
-    <div className={`app ${isResizing || isResizingHeader ? 'resizing' : ''}`}>
-      <div className="sidebar-container" style={{ width: sidebarWidth }}>
-        <Sidebar
-          conversations={conversations}
-          currentConversationId={currentConversationId}
-          onSelectConversation={handleSelectConversation}
-          onNewConversation={handleNewConversation}
-          onDeleteConversation={handleDeleteConversation}
-        />
-        <div
-          className="resize-handle"
-          onMouseDown={handleMouseDown}
-        />
-      </div>
-      <div className="main-content">
-        <div className="header-section-wrapper" style={{ height: headerHeight }}>
-          <div className="header-section">
-            <header className="app-header">
-              <div className="app-header-top">
-                <div>
-                  <h1 className="app-title">PRナビ <span className="app-tagline">リリース作成エージェント🤖</span></h1>
-                  <p className="app-subtitle">
-                    複数のAIが原稿を作成し、記者視点で評価・ランキング・最終版を生成
-                  </p>
-                </div>
-                <div className="user-menu">
-                  <span className={`plan-badge ${profile?.plan || 'free'}`}>
-                    {profile?.plan === 'pro' ? 'Pro' : 'Free'}
-                  </span>
-                  {profile?.is_admin && <span className="admin-badge">Admin</span>}
-                  <span className="user-email">{user?.email}</span>
-                  <button onClick={signOut} className="sign-out-btn">ログアウト</button>
-                </div>
-              </div>
-            </header>
-            <div className="header-controls">
-              <ModeSelector
-                config={pressConfig}
-                onConfigChange={setPressConfig}
-                disabled={isLoading}
-              />
-            </div>
+    <div className="app">
+      {/* Top Header */}
+      <header className="top-header">
+        <div className="header-left">
+          <div className="logo">
+            PRナビ
+            <span className="logo-tagline">リリース作成エージェント🤖</span>
           </div>
-          <div
-            className="header-resize-handle"
-            onMouseDown={handleHeaderMouseDown}
+        </div>
+        <div className="header-right">
+          <div className="user-menu">
+            <span className={`plan-badge ${profile?.plan || 'free'}`}>
+              {profile?.plan === 'pro' ? 'Pro' : 'Free'}
+            </span>
+            {profile?.is_admin && <span className="admin-badge">Admin</span>}
+            <span className="user-email">{user?.email}</span>
+            <button onClick={signOut} className="sign-out-btn">ログアウト</button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main 3-column layout */}
+      <div className="main-container">
+        {/* Left Sidebar - History */}
+        <aside className="sidebar-left">
+          <button className="new-btn" onClick={handleNewConversation}>
+            + 新規作成
+          </button>
+          <div className="sidebar-title">履歴</div>
+          <div className="index-list">
+            {conversations.length === 0 ? (
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', padding: 'var(--space-sm)' }}>
+                履歴がありません
+              </div>
+            ) : (
+              conversations.map((conv, index) => (
+                <div
+                  key={conv.id}
+                  className={`index-item ${conv.id === currentConversationId ? 'active' : ''}`}
+                  onClick={() => handleSelectConversation(conv.id)}
+                >
+                  <div className={`index-icon ${getIndexColor(index)}`}></div>
+                  <span className="index-text">{conv.title || '新規プレスリリース'}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </aside>
+
+        {/* Center Content */}
+        <div className="center-content">
+          {/* Config Panel */}
+          <div className="config-panel">
+            <ModeSelector
+              config={pressConfig}
+              onConfigChange={setPressConfig}
+              disabled={isLoading}
+            />
+          </div>
+
+          {/* Chat Area */}
+          <ChatInterface
+            conversation={currentConversation}
+            onSendMessage={handleSendMessage}
+            onCancel={handleCancel}
+            isLoading={isLoading}
           />
         </div>
-        <ChatInterface
-          conversation={currentConversation}
-          onSendMessage={handleSendMessage}
-          onCancel={handleCancel}
-          isLoading={isLoading}
-        />
+
+        {/* Right Sidebar - Evaluation (placeholder) */}
+        <aside className="sidebar-right">
+          <h2 className="sidebar-right-title">評価</h2>
+
+          {currentConversation?.messages?.some(m => m.role === 'assistant' && m.metadata) ? (
+            <>
+              {/* Score Card */}
+              <div className="score-card">
+                <div className="score-header">
+                  <span className="score-label">PR SCORE</span>
+                </div>
+                <div className="score-value">--</div>
+                <div className="score-bar">
+                  <div className="score-bar-fill" style={{ width: '0%' }}></div>
+                </div>
+                <div className="score-verdict">
+                  評価待ち
+                </div>
+              </div>
+
+              <div className="evaluator-section-title">記者コメント</div>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                Stage 2 の評価結果がここに表示されます
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              プレスリリースを作成すると、記者による評価がここに表示されます
+            </div>
+          )}
+        </aside>
       </div>
     </div>
   );

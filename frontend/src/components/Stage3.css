@@ -1,74 +1,76 @@
 .stage3 {
-  background: #f0fff0;
-  border-color: #c8e6c8;
+  background: rgba(52, 168, 83, 0.05);
+  border-color: rgba(52, 168, 83, 0.3);
 }
 
 .final-response {
-  background: #ffffff;
-  padding: 20px;
-  border-radius: 6px;
-  border: 1px solid #c8e6c8;
+  background: var(--bg-primary);
+  padding: var(--space-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(52, 168, 83, 0.3);
 }
 
 .editor-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e8f5e8;
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid rgba(52, 168, 83, 0.2);
 }
 
 .editor-label {
-  color: #2d8a2d;
-  font-size: 13px;
+  color: var(--success);
+  font-size: 0.75rem;
   font-family: monospace;
   font-weight: 600;
 }
 
 .final-text {
   color: #333;
-  line-height: 1.7;
-  font-size: 15px;
+  line-height: 2;
+  font-size: 17px;
+  letter-spacing: 0.01em;
 }
 
 /* Error state */
 .final-response.error {
-  background: #fff5f5;
-  border-color: #ffcdd2;
+  background: rgba(234, 67, 53, 0.05);
+  border-color: rgba(234, 67, 53, 0.3);
 }
 
 .final-response.error .editor-label {
-  color: #c62828;
-  border-bottom-color: #ffcdd2;
+  color: var(--error);
+  border-bottom-color: rgba(234, 67, 53, 0.2);
 }
 
 .error-content {
   text-align: center;
-  padding: 24px;
+  padding: var(--space-lg);
 }
 
 .error-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
+  font-size: 3rem;
+  margin-bottom: var(--space-md);
 }
 
 .error-message {
-  color: #c62828;
-  font-size: 15px;
+  color: var(--error);
+  font-size: 0.9375rem;
   line-height: 1.6;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-md);
 }
 
 .credit-link {
   display: inline-block;
-  background: #1976d2;
+  background: var(--info);
   color: white;
-  padding: 10px 20px;
-  border-radius: 6px;
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-md);
   text-decoration: none;
   font-weight: 500;
-  transition: background 0.2s;
+  font-size: 0.875rem;
+  transition: background 0.15s;
 }
 
 .credit-link:hover {
