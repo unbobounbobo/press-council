@@ -17,7 +17,7 @@ export default function Sidebar({
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h1>Press Council</h1>
+        <h1>PRナビ</h1>
         <button className="new-conversation-btn" onClick={onNewConversation}>
           + 新規作成
         </button>

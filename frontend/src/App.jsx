@@ -376,14 +376,17 @@ function MainApp() {
             <header className="app-header">
               <div className="app-header-top">
                 <div>
-                  <h1 className="app-title">Press Council</h1>
+                  <h1 className="app-title">PRナビ <span className="app-tagline">リリース作成エージェント🤖</span></h1>
                   <p className="app-subtitle">
                     複数のAIが原稿を作成し、記者視点で評価・ランキング・最終版を生成
                   </p>
                 </div>
                 <div className="user-menu">
-                  <span className="user-email">{user?.email}</span>
+                  <span className={`plan-badge ${profile?.plan || 'free'}`}>
+                    {profile?.plan === 'pro' ? 'Pro' : 'Free'}
+                  </span>
                   {profile?.is_admin && <span className="admin-badge">Admin</span>}
+                  <span className="user-email">{user?.email}</span>
                   <button onClick={signOut} className="sign-out-btn">ログアウト</button>
                 </div>
               </div>

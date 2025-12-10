@@ -113,13 +113,35 @@
   color: #666;
 }
 
-.admin-badge {
+.plan-badge {
   font-size: 11px;
-  padding: 2px 8px;
-  background: #ffcc00;
-  color: #333;
+  padding: 3px 10px;
   border-radius: 4px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.plan-badge.free {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+
+.plan-badge.pro {
+  background: linear-gradient(135deg, #ffcc00, #ff9800);
+  color: #111;
+  border: none;
+}
+
+.admin-badge {
+  font-size: 11px;
+  padding: 3px 10px;
+  background: #e3f2fd;
+  color: #1565c0;
+  border-radius: 4px;
+  font-weight: 600;
+  border: 1px solid #90caf9;
 }
 
 .sign-out-btn {
@@ -169,6 +191,13 @@
   color: #3a3a3a;
   margin: 0 0 4px 0;
   letter-spacing: -0.02em;
+}
+
+.app-tagline {
+  font-size: 0.5em;
+  font-weight: 500;
+  color: #666;
+  vertical-align: middle;
 }
 
 .app-subtitle {

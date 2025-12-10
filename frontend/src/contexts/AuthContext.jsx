@@ -45,10 +45,17 @@ export function AuthProvider({ children }) {
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
-      setProfile(data);
+      if (error) {
+        console.warn('Profile not found, using defaults:', error.message);
+        // profileが存在しない場合はデフォルト値を設定
+        setProfile({ id: userId, plan: 'free', is_admin: false });
+      } else {
+        setProfile(data);
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
+      // エラー時もデフォルト値を設定
+      setProfile({ id: userId, plan: 'free', is_admin: false });
     } finally {
       setLoading(false);
     }

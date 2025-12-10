@@ -21,29 +21,25 @@
   margin-bottom: 32px;
 }
 
-.auth-logo {
-  width: 48px;
-  height: 48px;
-  background: #ffcc00;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 24px;
-  margin: 0 auto 16px;
+.auth-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #111;
+  margin-bottom: 4px;
+  letter-spacing: -0.5px;
 }
 
-.auth-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #111;
-  margin-bottom: 8px;
+.auth-tagline {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
 }
 
 .auth-subtitle {
   font-size: 14px;
   color: #666;
+  line-height: 1.5;
 }
 
 .auth-google-btn {

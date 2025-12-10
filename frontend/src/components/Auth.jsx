@@ -48,10 +48,10 @@ export function Auth() {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <div className="auth-logo">P</div>
-          <h1 className="auth-title">Press Council</h1>
+          <h1 className="auth-title">PRナビ</h1>
+          <p className="auth-tagline">リリース作成エージェント🤖</p>
           <p className="auth-subtitle">
-            AIがプレスリリースを作成し、記者視点で評価
+            複数のAIが原稿を作成し、記者視点で評価・ランキング
           </p>
         </div>
 
