@@ -104,6 +104,23 @@ body {
   background: var(--text-muted);
 }
 
+/* PRTIMES-style typography */
+.press-release-title {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.press-release-subtitle {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
 /* Global markdown styling */
 .markdown-content {
   padding: 16px;
@@ -111,6 +128,24 @@ body {
   line-height: 2;
   letter-spacing: 0.01em;
   color: #333;
+}
+
+/* PRTIMES-style heading in markdown */
+.markdown-content h1 {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.markdown-content h2 {
+  font-size: 20px;
+  font-weight: 700;
+  border-left: 4px solid var(--accent-primary);
+  padding-left: 12px;
+}
+
+.markdown-content h3 {
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .markdown-content p {

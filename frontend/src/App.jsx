@@ -1,10 +1,19 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { Auth } from './components/Auth';
 import { ModeSelector } from './components/ModeSelector';
 import ChatInterface from './components/ChatInterface';
 import { api } from './api';
 import './App.css';
+
+// Persona display info
+const PERSONA_INFO = {
+  nikkei: { name: '日経記者', emoji: '📰', color: 'nikkei' },
+  lifestyle: { name: '全国紙生活部', emoji: '🏠', color: 'lifestyle' },
+  web: { name: 'Web記者', emoji: '💻', color: 'web' },
+  trade: { name: '業界専門誌', emoji: '🔧', color: 'trade' },
+  tv: { name: '経済テレビ', emoji: '📺', color: 'tv' },
+};
 
 // Main application content (only rendered when authenticated)
 function MainApp() {
@@ -13,6 +22,7 @@ function MainApp() {
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentStage, setCurrentStage] = useState(0); // 0=idle, 1=stage1, 2=stage2, 3=stage3
   const abortControllerRef = useRef(null);
 
   // Configuration state
@@ -23,6 +33,44 @@ function MainApp() {
     editor: null,
     criticismLevel: 3,
   });
+
+  // Get latest assistant message with metadata
+  const latestAssistantMsg = useMemo(() => {
+    if (!currentConversation?.messages) return null;
+    const assistantMsgs = currentConversation.messages.filter(m => m.role === 'assistant');
+    return assistantMsgs[assistantMsgs.length - 1] || null;
+  }, [currentConversation]);
+
+  // Extract evaluation data from metadata
+  const evaluationData = useMemo(() => {
+    if (!latestAssistantMsg?.metadata) return null;
+    const { aggregate_rankings, label_to_model, persona_breakdown } = latestAssistantMsg.metadata;
+    if (!aggregate_rankings) return null;
+
+    // Calculate average score (inverse of avg_rank, scaled to 100)
+    const topRanking = aggregate_rankings[0];
+    const avgScore = topRanking ? Math.round((1 - (topRanking.avg_rank - 1) / 3) * 100) : 0;
+
+    return {
+      score: avgScore,
+      rankings: aggregate_rankings,
+      labelToModel: label_to_model,
+      personaBreakdown: persona_breakdown,
+    };
+  }, [latestAssistantMsg]);
+
+  // Extract evaluator comments from stage2
+  const evaluatorComments = useMemo(() => {
+    if (!latestAssistantMsg?.stage2) return [];
+    return latestAssistantMsg.stage2.slice(0, 3).map(eval_ => ({
+      persona: eval_.persona,
+      model: eval_.model,
+      text: eval_.parsed_ranking
+        ? `1位: ${eval_.parsed_ranking[0] || '-'}`
+        : eval_.content?.slice(0, 100) + '...',
+      ranking: eval_.parsed_ranking,
+    }));
+  }, [latestAssistantMsg]);
 
   // Load conversations on mount
   useEffect(() => {
@@ -49,6 +97,7 @@ function MainApp() {
     try {
       const conv = await api.getConversation(id);
       setCurrentConversation(conv);
+      setCurrentStage(0);
     } catch (error) {
       console.error('Failed to load conversation:', error);
     }
@@ -62,6 +111,7 @@ function MainApp() {
         ...conversations,
       ]);
       setCurrentConversationId(newConv.id);
+      setCurrentStage(0);
     } catch (error) {
       console.error('Failed to create conversation:', error);
     }
@@ -90,6 +140,7 @@ function MainApp() {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
       setIsLoading(false);
+      setCurrentStage(0);
 
       setCurrentConversation((prev) => {
         if (!prev) return prev;
@@ -110,6 +161,7 @@ function MainApp() {
     abortControllerRef.current = new AbortController();
 
     setIsLoading(true);
+    setCurrentStage(1);
     try {
       const userMessage = { role: 'user', content };
       setCurrentConversation((prev) => ({
@@ -160,6 +212,7 @@ function MainApp() {
               break;
 
             case 'stage1_start':
+              setCurrentStage(1);
               setCurrentConversation((prev) => {
                 const messages = [...prev.messages];
                 const lastMsg = messages[messages.length - 1];
@@ -180,6 +233,7 @@ function MainApp() {
               break;
 
             case 'stage2_start':
+              setCurrentStage(2);
               setCurrentConversation((prev) => {
                 const messages = [...prev.messages];
                 const lastMsg = messages[messages.length - 1];
@@ -201,6 +255,7 @@ function MainApp() {
               break;
 
             case 'stage3_start':
+              setCurrentStage(3);
               setCurrentConversation((prev) => {
                 const messages = [...prev.messages];
                 const lastMsg = messages[messages.length - 1];
@@ -235,11 +290,13 @@ function MainApp() {
               });
               loadConversations();
               setIsLoading(false);
+              setCurrentStage(0);
               break;
 
             case 'error':
               console.error('Stream error:', event.message);
               setIsLoading(false);
+              setCurrentStage(0);
               break;
 
             default:
@@ -259,6 +316,7 @@ function MainApp() {
         messages: prev.messages.slice(0, -2),
       }));
       setIsLoading(false);
+      setCurrentStage(0);
     } finally {
       abortControllerRef.current = null;
     }
@@ -277,9 +335,30 @@ function MainApp() {
         <div className="header-left">
           <div className="logo">
             PRナビ
-            <span className="logo-tagline">リリース作成エージェント🤖</span>
+            <span className="logo-tagline">リリース作成エージェント</span>
           </div>
         </div>
+
+        {/* Step Progress Indicator */}
+        {isLoading && (
+          <div className="step-progress">
+            <div className={`step-item ${currentStage >= 1 ? 'active' : ''} ${currentStage === 1 ? 'current' : ''}`}>
+              <span className="step-num">1</span>
+              <span className="step-label">ドラフト作成</span>
+            </div>
+            <div className="step-arrow">→</div>
+            <div className={`step-item ${currentStage >= 2 ? 'active' : ''} ${currentStage === 2 ? 'current' : ''}`}>
+              <span className="step-num">2</span>
+              <span className="step-label">記者評価</span>
+            </div>
+            <div className="step-arrow">→</div>
+            <div className={`step-item ${currentStage >= 3 ? 'active' : ''} ${currentStage === 3 ? 'current' : ''}`}>
+              <span className="step-num">3</span>
+              <span className="step-label">最終版作成</span>
+            </div>
+          </div>
+        )}
+
         <div className="header-right">
           <div className="user-menu">
             <span className={`plan-badge ${profile?.plan || 'free'}`}>
@@ -340,34 +419,83 @@ function MainApp() {
           />
         </div>
 
-        {/* Right Sidebar - Evaluation (placeholder) */}
+        {/* Right Sidebar - Evaluation */}
         <aside className="sidebar-right">
-          <h2 className="sidebar-right-title">評価</h2>
+          <h2 className="sidebar-right-title">評価サマリー</h2>
 
-          {currentConversation?.messages?.some(m => m.role === 'assistant' && m.metadata) ? (
+          {evaluationData ? (
             <>
               {/* Score Card */}
               <div className="score-card">
                 <div className="score-header">
                   <span className="score-label">PR SCORE</span>
                 </div>
-                <div className="score-value">--</div>
+                <div className="score-value">{evaluationData.score}</div>
                 <div className="score-bar">
-                  <div className="score-bar-fill" style={{ width: '0%' }}></div>
+                  <div
+                    className="score-bar-fill"
+                    style={{ width: `${evaluationData.score}%` }}
+                  ></div>
                 </div>
-                <div className="score-verdict">
-                  評価待ち
+                <div className={`score-verdict ${evaluationData.score >= 70 ? 'good' : evaluationData.score >= 50 ? 'ok' : 'needs-work'}`}>
+                  {evaluationData.score >= 70 ? '✓ 配布推奨' : evaluationData.score >= 50 ? '△ 要改善' : '✕ 再検討'}
                 </div>
               </div>
 
-              <div className="evaluator-section-title">記者コメント</div>
-              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Stage 2 の評価結果がここに表示されます
+              {/* Ranking Summary */}
+              <div className="ranking-summary">
+                <div className="ranking-title">総合ランキング</div>
+                {evaluationData.rankings.slice(0, 3).map((rank, idx) => (
+                  <div key={idx} className={`ranking-item rank-${idx + 1}`}>
+                    <span className="ranking-position">{idx + 1}位</span>
+                    <span className="ranking-label">{rank.label}</span>
+                    <span className="ranking-model">
+                      {evaluationData.labelToModel?.[rank.label] || '-'}
+                    </span>
+                  </div>
+                ))}
               </div>
+
+              {/* Evaluator Comments */}
+              <div className="evaluator-section-title">記者コメント</div>
+              {evaluatorComments.map((comment, idx) => {
+                const info = PERSONA_INFO[comment.persona] || { name: comment.persona, emoji: '📝', color: 'default' };
+                return (
+                  <div key={idx} className="evaluator-comment">
+                    <div className="evaluator-header">
+                      <div className={`evaluator-avatar ${info.color}`}>{info.emoji}</div>
+                      <div className="evaluator-info">
+                        <div className="evaluator-name">
+                          {info.name}
+                          {comment.ranking && (
+                            <span className="evaluator-badge">1位: {comment.ranking[0]}</span>
+                          )}
+                        </div>
+                        <div className="evaluator-meta">{comment.model}</div>
+                      </div>
+                    </div>
+                    {comment.ranking && (
+                      <div className="evaluator-text">
+                        2位: {comment.ranking[1] || '-'}, 3位: {comment.ranking[2] || '-'}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </>
+          ) : isLoading ? (
+            <div className="evaluation-loading">
+              <div className="loading-spinner"></div>
+              <p>評価中...</p>
+            </div>
           ) : (
-            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              プレスリリースを作成すると、記者による評価がここに表示されます
+            <div className="evaluation-empty">
+              <p>プレスリリースを作成すると、記者による評価がここに表示されます</p>
+              <ul>
+                <li>総合スコア</li>
+                <li>ドラフトランキング</li>
+                <li>5種類の記者視点</li>
+              </ul>
             </div>
           )}
         </aside>

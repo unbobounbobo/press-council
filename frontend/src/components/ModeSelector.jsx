@@ -1,19 +1,66 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api';
 import './ModeSelector.css';
 
 /**
- * ModeSelector component for selecting press release generation configuration.
- * Supports preset modes and custom configuration.
+ * ModeSelector component with OpenRouter-style dropdown selection.
+ * Supports preset modes and custom configuration with plan-based restrictions.
  */
 export function ModeSelector({ config, onConfigChange, disabled }) {
+  const { profile } = useAuth();
+  const isPro = profile?.plan === 'pro';
+
   const [modes, setModes] = useState([]);
   const [llmBlocks, setLlmBlocks] = useState([]);
   const [personas, setPersonas] = useState([]);
   const [criticismLevels, setCriticismLevels] = useState({});
-  const [defaultMode, setDefaultMode] = useState('standard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Dropdown states
+  const [showWriterDropdown, setShowWriterDropdown] = useState(false);
+  const [showEditorDropdown, setShowEditorDropdown] = useState(false);
+  const [showMatrixDropdown, setShowMatrixDropdown] = useState(false);
+  const writerDropdownRef = useRef(null);
+  const editorDropdownRef = useRef(null);
+  const matrixDropdownRef = useRef(null);
+
+  // Check if a model is available for the current plan
+  const isModelAvailable = (block) => {
+    if (isPro) return true;
+    return block.tier === 'free' || block.tier === 'standard';
+  };
+
+  // Group models by provider
+  const groupedModels = useCallback(() => {
+    const groups = {};
+    llmBlocks.forEach(block => {
+      if (!groups[block.provider]) {
+        groups[block.provider] = [];
+      }
+      groups[block.provider].push(block);
+    });
+    return groups;
+  }, [llmBlocks]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (writerDropdownRef.current && !writerDropdownRef.current.contains(e.target)) {
+        setShowWriterDropdown(false);
+      }
+      if (editorDropdownRef.current && !editorDropdownRef.current.contains(e.target)) {
+        setShowEditorDropdown(false);
+      }
+      if (matrixDropdownRef.current && !matrixDropdownRef.current.contains(e.target)) {
+        setShowMatrixDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Load configuration on mount
   useEffect(() => {
@@ -27,7 +74,6 @@ export function ModeSelector({ config, onConfigChange, disabled }) {
         ]);
 
         setModes(modesData.modes);
-        setDefaultMode(modesData.default_mode);
         setLlmBlocks(blocksData.blocks);
         setPersonas(personasData.personas);
         setCriticismLevels(criticismData.levels);
@@ -58,6 +104,17 @@ export function ModeSelector({ config, onConfigChange, disabled }) {
   const handleModeChange = (modeId) => {
     const mode = modes.find(m => m.id === modeId);
     if (mode) {
+      // Check if mode uses premium models
+      const usesPremium = mode.default_writers.some(wId => {
+        const block = llmBlocks.find(b => b.id === wId);
+        return block && block.tier === 'premium';
+      });
+
+      if (!isPro && usesPremium) {
+        setShowUpgradeModal(true);
+        return;
+      }
+
       onConfigChange({
         ...config,
         mode: modeId,
@@ -70,43 +127,55 @@ export function ModeSelector({ config, onConfigChange, disabled }) {
 
   // Handle writer toggle
   const handleWriterToggle = (writerId) => {
+    const block = llmBlocks.find(b => b.id === writerId);
+    if (!isModelAvailable(block)) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     const newWriters = config.writers.includes(writerId)
       ? config.writers.filter(w => w !== writerId)
       : [...config.writers, writerId];
 
-    // Ensure at least one writer is selected
     if (newWriters.length > 0) {
       onConfigChange({ ...config, writers: newWriters });
     }
   };
 
-  // Handle matrix cell toggle
+  // Handle editor change
+  const handleEditorChange = (editorId) => {
+    const block = llmBlocks.find(b => b.id === editorId);
+    if (!isModelAvailable(block)) {
+      setShowUpgradeModal(true);
+      return;
+    }
+    onConfigChange({ ...config, editor: editorId });
+    setShowEditorDropdown(false);
+  };
+
+  // Handle matrix toggle
   const handleMatrixToggle = (llmId, personaId) => {
-    const key = `${llmId}-${personaId}`;
+    const block = llmBlocks.find(b => b.id === llmId);
+    if (!isModelAvailable(block)) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     const existingIndex = config.matrix.findIndex(
       ([l, p]) => l === llmId && p === personaId
     );
 
     let newMatrix;
     if (existingIndex >= 0) {
-      // Remove this combination
       newMatrix = config.matrix.filter((_, i) => i !== existingIndex);
     } else {
-      // Add this combination
       newMatrix = [...config.matrix, [llmId, personaId]];
     }
-
     onConfigChange({ ...config, matrix: newMatrix });
   };
 
-  // Check if a matrix cell is active
   const isMatrixCellActive = (llmId, personaId) => {
     return config.matrix?.some(([l, p]) => l === llmId && p === personaId);
-  };
-
-  // Handle editor change
-  const handleEditorChange = (editorId) => {
-    onConfigChange({ ...config, editor: editorId });
   };
 
   // Handle criticism level change
@@ -114,41 +183,9 @@ export function ModeSelector({ config, onConfigChange, disabled }) {
     onConfigChange({ ...config, criticismLevel: parseInt(level) });
   };
 
-  // Shuffle matrix
-  const shuffleMatrix = useCallback(() => {
-    const currentMode = modes.find(m => m.id === config.mode);
-    if (!currentMode) return;
-
-    // Create all possible combinations
-    const allCombos = [];
-    for (const llm of llmBlocks) {
-      for (const persona of personas) {
-        allCombos.push([llm.id, persona.id]);
-      }
-    }
-
-    // Shuffle and take the same number as the current matrix
-    const targetCount = config.matrix?.length || currentMode.default_matrix.length;
-    const shuffled = [...allCombos].sort(() => Math.random() - 0.5);
-    const newMatrix = shuffled.slice(0, targetCount);
-
-    onConfigChange({ ...config, matrix: newMatrix });
-  }, [config, modes, llmBlocks, personas, onConfigChange]);
-
-  // Select all matrix cells
-  const selectAllMatrix = () => {
-    const allCombos = [];
-    for (const llm of llmBlocks) {
-      for (const persona of personas) {
-        allCombos.push([llm.id, persona.id]);
-      }
-    }
-    onConfigChange({ ...config, matrix: allCombos });
-  };
-
-  // Clear all matrix cells
-  const clearAllMatrix = () => {
-    onConfigChange({ ...config, matrix: [] });
+  // Get model info by ID
+  const getModelInfo = (modelId) => {
+    return llmBlocks.find(b => b.id === modelId);
   };
 
   if (loading) {
@@ -160,162 +197,51 @@ export function ModeSelector({ config, onConfigChange, disabled }) {
   }
 
   const currentMode = modes.find(m => m.id === config.mode);
+  const groups = groupedModels();
 
   return (
     <div className="mode-selector">
-      {/* Step indicators */}
-      <div className="step-indicators">
-        <div className="step-indicator">
-          <span className="step-number">1</span>
-          <span className="step-label">原稿作成</span>
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="upgrade-modal-overlay" onClick={() => setShowUpgradeModal(false)}>
+          <div className="upgrade-modal" onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowUpgradeModal(false)}>×</button>
+            <div className="upgrade-icon">🚀</div>
+            <h3>Proプランにアップグレード</h3>
+            <p>Claude Opus/Sonnet、GPT-4o等のプレミアムモデルをご利用いただけます。</p>
+            <ul className="upgrade-features">
+              <li>✓ Claude 4 Opus/Sonnet</li>
+              <li>✓ GPT-4o/GPT-4 Turbo</li>
+              <li>✓ Grok 2</li>
+              <li>✓ 無制限の評価パターン</li>
+            </ul>
+            <button className="upgrade-btn">
+              Proプランを見る（月額¥2,980）
+            </button>
+            <p className="upgrade-note">7日間の無料トライアル付き</p>
+          </div>
         </div>
-        <div className="step-arrow">→</div>
-        <div className="step-indicator">
-          <span className="step-number">2</span>
-          <span className="step-label">記者評価</span>
-        </div>
-        <div className="step-arrow">→</div>
-        <div className="step-indicator">
-          <span className="step-number">3</span>
-          <span className="step-label">最終執筆</span>
-        </div>
-      </div>
+      )}
 
-      {/* Preset selection */}
-      <div className="preset-section">
+      {/* Compact header with preset + dropdowns */}
+      <div className="selector-header">
+        {/* Preset buttons */}
         <div className="preset-buttons">
           {modes.map((mode) => (
             <button
               key={mode.id}
-              className={`preset-button ${config.mode === mode.id ? 'active' : ''} ${mode.id}`}
+              className={`preset-btn ${config.mode === mode.id ? 'active' : ''}`}
               onClick={() => handleModeChange(mode.id)}
               disabled={disabled}
             >
-              <span className="preset-name">{mode.name_ja}</span>
-              <span className="preset-info">{mode.description}</span>
+              {mode.name_ja}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Configuration grid */}
-      <div className="config-grid">
-        {/* STEP 1: Writers */}
-        <div className="config-section step1">
-          <div className="section-header">
-            <span className="section-title">STEP 1: ライター</span>
-            <span className="section-count">{config.writers?.length || 0}モデル</span>
-          </div>
-          <div className="llm-toggles">
-            {llmBlocks.map((block) => (
-              <button
-                key={block.id}
-                className={`llm-toggle ${config.writers?.includes(block.id) ? 'active' : ''}`}
-                onClick={() => handleWriterToggle(block.id)}
-                disabled={disabled}
-                title={block.description}
-              >
-                {block.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* STEP 2: Evaluation Matrix */}
-        <div className="config-section step2">
-          <div className="section-header">
-            <span className="section-title">STEP 2: 評価マトリクス</span>
-            <div className="matrix-actions">
-              <button
-                className="matrix-action-btn"
-                onClick={selectAllMatrix}
-                disabled={disabled}
-                title="全て選択"
-              >
-                全選択
-              </button>
-              <button
-                className="matrix-action-btn"
-                onClick={clearAllMatrix}
-                disabled={disabled}
-                title="全て解除"
-              >
-                クリア
-              </button>
-              <button
-                className="shuffle-button"
-                onClick={shuffleMatrix}
-                disabled={disabled}
-                title="組み合わせをシャッフル"
-              >
-                Shuffle
-              </button>
-            </div>
-          </div>
-
-          {/* Interactive Matrix Grid */}
-          <div className="matrix-grid">
-            <div className="matrix-header-row">
-              <div className="matrix-corner"></div>
-              {llmBlocks.map((block) => (
-                <div key={block.id} className="matrix-col-header">
-                  {block.name.split(' ')[0]}
-                </div>
-              ))}
-            </div>
-            {personas.map((persona) => (
-              <div key={persona.id} className="matrix-row">
-                <div className="matrix-row-header">{persona.name}</div>
-                {llmBlocks.map((block) => (
-                  <button
-                    key={`${block.id}-${persona.id}`}
-                    className={`matrix-cell ${isMatrixCellActive(block.id, persona.id) ? 'active' : ''}`}
-                    onClick={() => handleMatrixToggle(block.id, persona.id)}
-                    disabled={disabled}
-                    title={`${block.name} × ${persona.name}`}
-                  >
-                    {isMatrixCellActive(block.id, persona.id) ? '✓' : ''}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
-
-          <div className="matrix-count">
-            合計 {config.matrix?.length || 0} 評価
-          </div>
-        </div>
-
-        {/* STEP 3: Editor */}
-        <div className="config-section step3">
-          <div className="section-header">
-            <span className="section-title">STEP 3: 最終執筆</span>
-          </div>
-          <div className="editor-select">
-            {llmBlocks.map((block) => (
-              <button
-                key={block.id}
-                className={`editor-button ${config.editor === block.id ? 'active' : ''}`}
-                onClick={() => handleEditorChange(block.id)}
-                disabled={disabled}
-              >
-                {block.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Criticism level slider */}
-      <div className="criticism-section">
-        <div className="criticism-header">
-          <span className="criticism-label">批判度</span>
-          <span className="criticism-value">
-            {criticismLevels[config.criticismLevel]?.name || '標準'}
-          </span>
-        </div>
-        <div className="criticism-slider-container">
-          <span className="slider-label left">寛容</span>
+        {/* Criticism slider */}
+        <div className="criticism-compact">
+          <span className="criticism-label">批判度:</span>
           <input
             type="range"
             min="1"
@@ -323,17 +249,190 @@ export function ModeSelector({ config, onConfigChange, disabled }) {
             value={config.criticismLevel || 3}
             onChange={(e) => handleCriticismChange(e.target.value)}
             disabled={disabled}
-            className="criticism-slider"
+            className="criticism-slider-sm"
           />
-          <span className="slider-label right">厳格</span>
+          <span className="criticism-val">{criticismLevels[config.criticismLevel]?.name || '標準'}</span>
         </div>
       </div>
 
-      {/* Estimates */}
+      {/* Selection area */}
+      <div className="selector-grid">
+        {/* STEP 1: Writers - Dropdown */}
+        <div className="selector-section" ref={writerDropdownRef}>
+          <div className="section-label">
+            <span className="step-badge">1</span>
+            ライター
+            <span className="count-badge">{config.writers?.length || 0}</span>
+          </div>
+          <div
+            className={`dropdown-trigger ${showWriterDropdown ? 'open' : ''}`}
+            onClick={() => !disabled && setShowWriterDropdown(!showWriterDropdown)}
+          >
+            <div className="selected-tags">
+              {config.writers?.slice(0, 3).map(wId => {
+                const model = getModelInfo(wId);
+                return model ? (
+                  <span key={wId} className={`model-tag ${model.tier}`}>
+                    {model.name}
+                    <button
+                      className="tag-remove"
+                      onClick={(e) => { e.stopPropagation(); handleWriterToggle(wId); }}
+                    >×</button>
+                  </span>
+                ) : null;
+              })}
+              {config.writers?.length > 3 && (
+                <span className="more-tag">+{config.writers.length - 3}</span>
+              )}
+              {!config.writers?.length && <span className="placeholder">モデルを選択...</span>}
+            </div>
+            <span className="dropdown-arrow">▼</span>
+          </div>
+
+          {showWriterDropdown && (
+            <div className="dropdown-menu">
+              {Object.entries(groups).map(([provider, models]) => (
+                <div key={provider} className="dropdown-group">
+                  <div className="group-header">{provider}</div>
+                  {models.map(block => {
+                    const available = isModelAvailable(block);
+                    const selected = config.writers?.includes(block.id);
+                    return (
+                      <div
+                        key={block.id}
+                        className={`dropdown-item ${selected ? 'selected' : ''} ${!available ? 'locked' : ''}`}
+                        onClick={() => handleWriterToggle(block.id)}
+                      >
+                        <span className="item-check">{selected ? '✓' : ''}</span>
+                        <span className="item-name">{block.name}</span>
+                        <span className={`tier-badge ${block.tier}`}>
+                          {block.tier === 'free' ? 'FREE' : block.tier === 'premium' ? 'PRO' : ''}
+                        </span>
+                        {!available && <span className="lock-icon">🔒</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* STEP 2: Matrix - Compact grid */}
+        <div className="selector-section matrix-section" ref={matrixDropdownRef}>
+          <div className="section-label">
+            <span className="step-badge">2</span>
+            評価マトリクス
+            <span className="count-badge">{config.matrix?.length || 0}</span>
+          </div>
+          <div
+            className={`dropdown-trigger ${showMatrixDropdown ? 'open' : ''}`}
+            onClick={() => !disabled && setShowMatrixDropdown(!showMatrixDropdown)}
+          >
+            <span className="matrix-summary">
+              {config.matrix?.length || 0} 評価パターン
+            </span>
+            <span className="dropdown-arrow">▼</span>
+          </div>
+
+          {showMatrixDropdown && (
+            <div className="dropdown-menu matrix-menu">
+              <div className="matrix-grid-compact">
+                <div className="matrix-header-row">
+                  <div className="matrix-corner"></div>
+                  {config.writers?.map(wId => {
+                    const model = getModelInfo(wId);
+                    return model ? (
+                      <div key={wId} className="matrix-col-header" title={model.name}>
+                        {model.name.split(' ')[0]}
+                      </div>
+                    ) : null;
+                  })}
+                </div>
+                {personas.map(persona => (
+                  <div key={persona.id} className="matrix-row">
+                    <div className="matrix-row-header">{persona.name}</div>
+                    {config.writers?.map(wId => {
+                      const isActive = isMatrixCellActive(wId, persona.id);
+                      return (
+                        <button
+                          key={`${wId}-${persona.id}`}
+                          className={`matrix-cell-sm ${isActive ? 'active' : ''}`}
+                          onClick={() => handleMatrixToggle(wId, persona.id)}
+                        >
+                          {isActive ? '✓' : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* STEP 3: Editor - Dropdown */}
+        <div className="selector-section" ref={editorDropdownRef}>
+          <div className="section-label">
+            <span className="step-badge">3</span>
+            最終執筆
+          </div>
+          <div
+            className={`dropdown-trigger ${showEditorDropdown ? 'open' : ''}`}
+            onClick={() => !disabled && setShowEditorDropdown(!showEditorDropdown)}
+          >
+            {config.editor ? (
+              <span className={`model-tag single ${getModelInfo(config.editor)?.tier}`}>
+                {getModelInfo(config.editor)?.name || config.editor}
+              </span>
+            ) : (
+              <span className="placeholder">モデルを選択...</span>
+            )}
+            <span className="dropdown-arrow">▼</span>
+          </div>
+
+          {showEditorDropdown && (
+            <div className="dropdown-menu">
+              {Object.entries(groups).map(([provider, models]) => (
+                <div key={provider} className="dropdown-group">
+                  <div className="group-header">{provider}</div>
+                  {models.map(block => {
+                    const available = isModelAvailable(block);
+                    const selected = config.editor === block.id;
+                    return (
+                      <div
+                        key={block.id}
+                        className={`dropdown-item ${selected ? 'selected' : ''} ${!available ? 'locked' : ''}`}
+                        onClick={() => handleEditorChange(block.id)}
+                      >
+                        <span className="item-check">{selected ? '✓' : ''}</span>
+                        <span className="item-name">{block.name}</span>
+                        <span className={`tier-badge ${block.tier}`}>
+                          {block.tier === 'free' ? 'FREE' : block.tier === 'premium' ? 'PRO' : ''}
+                        </span>
+                        {!available && <span className="lock-icon">🔒</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Estimates footer */}
       {currentMode && (
-        <div className="estimates">
-          <span>約{currentMode.estimated_time_min}分</span>
-          <span>約{currentMode.estimated_cost_yen}円</span>
+        <div className="selector-footer">
+          <span className="estimate">⏱ 約{currentMode.estimated_time_min}分</span>
+          <span className="estimate">
+            💰 {currentMode.estimated_cost_yen === 0 ? '無料' : `約¥${currentMode.estimated_cost_yen}`}
+          </span>
+          {!isPro && (
+            <button className="upgrade-link" onClick={() => setShowUpgradeModal(true)}>
+              🚀 Proでもっと高性能に
+            </button>
+          )}
         </div>
       )}
     </div>

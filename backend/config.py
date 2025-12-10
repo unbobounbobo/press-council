@@ -33,7 +33,7 @@ class LLMBlock:
     name: str                  # Display name (e.g., "Claude Opus")
     model: str                 # OpenRouter model identifier
     provider: str              # Provider name (e.g., "Anthropic")
-    tier: Literal["premium", "standard", "fast"]  # Performance tier
+    tier: Literal["premium", "standard", "free"]  # Performance tier: premium=Pro only, standard/free=Free plan OK
     description: str = ""      # Brief description
     cost_factor: float = 1.0   # Relative cost (1.0 = baseline)
 
@@ -41,43 +41,139 @@ class LLMBlock:
         return hash(self.id)
 
 
-# Available LLM Blocks - Matches the UI mockup
+# Available LLM Blocks - OpenRouter models
+# tier: "free" = 無料プランで利用可, "standard" = 無料プランで利用可, "premium" = Proプラン専用
 LLM_BLOCKS = {
-    "opus": LLMBlock(
-        id="opus",
-        name="Claude Opus 4.5",
-        model="anthropic/claude-opus-4.5",
-        provider="Anthropic",
-        tier="premium",
-        description="高品質",
-        cost_factor=3.0
+    # ===== FREE TIER (無料プランで利用可) =====
+    "gemini-flash": LLMBlock(
+        id="gemini-flash",
+        name="Gemini 2.0 Flash",
+        model="google/gemini-2.0-flash-exp:free",
+        provider="Google",
+        tier="free",
+        description="高速・無料",
+        cost_factor=0.0
     ),
-    "gpt": LLMBlock(
-        id="gpt",
-        name="GPT-5.1",
-        model="openai/gpt-5.1",
-        provider="OpenAI",
-        tier="premium",
-        description="バランス",
-        cost_factor=2.0
+    "gemini-flash-thinking": LLMBlock(
+        id="gemini-flash-thinking",
+        name="Gemini 2.0 Flash Thinking",
+        model="google/gemini-2.0-flash-thinking-exp:free",
+        provider="Google",
+        tier="free",
+        description="推論強化・無料",
+        cost_factor=0.0
     ),
-    "gemini": LLMBlock(
-        id="gemini",
-        name="Gemini Pro",
-        model="google/gemini-3-pro-preview",
+    "llama-70b": LLMBlock(
+        id="llama-70b",
+        name="Llama 3.3 70B",
+        model="meta-llama/llama-3.3-70b-instruct",
+        provider="Meta",
+        tier="free",
+        description="高性能オープン",
+        cost_factor=0.5
+    ),
+    "qwen-32b": LLMBlock(
+        id="qwen-32b",
+        name="Qwen 2.5 32B",
+        model="qwen/qwen-2.5-32b-instruct",
+        provider="Alibaba",
+        tier="free",
+        description="多言語対応",
+        cost_factor=0.3
+    ),
+    "mistral-small": LLMBlock(
+        id="mistral-small",
+        name="Mistral Small",
+        model="mistralai/mistral-small-24b-instruct-2501",
+        provider="Mistral",
+        tier="free",
+        description="軽量・高速",
+        cost_factor=0.2
+    ),
+
+    # ===== STANDARD TIER (無料プランで利用可・やや高性能) =====
+    "gemini-pro": LLMBlock(
+        id="gemini-pro",
+        name="Gemini 1.5 Pro",
+        model="google/gemini-pro-1.5",
         provider="Google",
         tier="standard",
-        description="簡潔",
+        description="バランス型",
         cost_factor=1.0
     ),
-    "grok": LLMBlock(
-        id="grok",
-        name="Grok 4.1",
-        model="x-ai/grok-4.1-fast",
+    "claude-haiku": LLMBlock(
+        id="claude-haiku",
+        name="Claude 3.5 Haiku",
+        model="anthropic/claude-3.5-haiku",
+        provider="Anthropic",
+        tier="standard",
+        description="高速・低コスト",
+        cost_factor=0.8
+    ),
+    "deepseek-chat": LLMBlock(
+        id="deepseek-chat",
+        name="DeepSeek V3",
+        model="deepseek/deepseek-chat",
+        provider="DeepSeek",
+        tier="standard",
+        description="コスパ最強",
+        cost_factor=0.3
+    ),
+
+    # ===== PREMIUM TIER (Proプラン専用) =====
+    "claude-sonnet": LLMBlock(
+        id="claude-sonnet",
+        name="Claude 4 Sonnet",
+        model="anthropic/claude-sonnet-4",
+        provider="Anthropic",
+        tier="premium",
+        description="最新・高品質",
+        cost_factor=2.0
+    ),
+    "claude-opus": LLMBlock(
+        id="claude-opus",
+        name="Claude 4 Opus",
+        model="anthropic/claude-opus-4",
+        provider="Anthropic",
+        tier="premium",
+        description="最高性能",
+        cost_factor=5.0
+    ),
+    "gpt-4o": LLMBlock(
+        id="gpt-4o",
+        name="GPT-4o",
+        model="openai/gpt-4o",
+        provider="OpenAI",
+        tier="premium",
+        description="マルチモーダル",
+        cost_factor=2.0
+    ),
+    "gpt-4-turbo": LLMBlock(
+        id="gpt-4-turbo",
+        name="GPT-4 Turbo",
+        model="openai/gpt-4-turbo",
+        provider="OpenAI",
+        tier="premium",
+        description="高速GPT-4",
+        cost_factor=1.5
+    ),
+    "grok-2": LLMBlock(
+        id="grok-2",
+        name="Grok 2",
+        model="x-ai/grok-2-1212",
         provider="xAI",
         tier="premium",
         description="独自視点",
-        cost_factor=2.0
+        cost_factor=1.5
+    ),
+    "gemini-exp": LLMBlock(
+        id="gemini-exp",
+        name="Gemini Exp 1206",
+        model="google/gemini-exp-1206:free",
+        provider="Google",
+        tier="premium",
+        description="実験版・最新",
+        cost_factor=0.0
     ),
 }
 
@@ -176,55 +272,55 @@ MODE_CONFIGS = {
         id="simple",
         name="Simple",
         name_ja="シンプル",
-        description="3ライター、5評価。素早く結果を確認したい時に。",
-        default_writers=["opus", "gpt", "gemini"],
+        description="無料モデルで素早く。初めての方におすすめ。",
+        default_writers=["gemini-flash", "llama-70b", "deepseek-chat"],
         default_matrix=[
-            ("opus", "nikkei"),
-            ("gemini", "lifestyle"),
-            ("gpt", "web"),
-            ("opus", "trade"),
-            ("gemini", "tv"),
+            ("gemini-flash", "nikkei"),
+            ("llama-70b", "lifestyle"),
+            ("deepseek-chat", "web"),
+            ("gemini-flash", "trade"),
+            ("llama-70b", "tv"),
         ],
-        default_editor="gemini",
+        default_editor="gemini-flash",
         estimated_time_min=1,
-        estimated_cost_yen=60
+        estimated_cost_yen=0
     ),
     "standard": ModeConfig(
         id="standard",
         name="Standard",
         name_ja="おすすめ",
-        description="3ライター、10評価。バランスの取れた標準モード。",
-        default_writers=["opus", "gpt", "gemini"],
+        description="バランス型。複数モデルで多角的な評価。",
+        default_writers=["gemini-pro", "claude-haiku", "deepseek-chat"],
         default_matrix=[
-            ("opus", "nikkei"),
-            ("gpt", "nikkei"),
-            ("gpt", "lifestyle"),
-            ("gemini", "lifestyle"),
-            ("gpt", "web"),
-            ("grok", "web"),
-            ("opus", "trade"),
-            ("gpt", "trade"),
-            ("gemini", "tv"),
-            ("grok", "tv"),
+            ("gemini-pro", "nikkei"),
+            ("claude-haiku", "nikkei"),
+            ("claude-haiku", "lifestyle"),
+            ("deepseek-chat", "lifestyle"),
+            ("gemini-pro", "web"),
+            ("deepseek-chat", "web"),
+            ("claude-haiku", "trade"),
+            ("gemini-pro", "trade"),
+            ("deepseek-chat", "tv"),
+            ("gemini-pro", "tv"),
         ],
-        default_editor="opus",
+        default_editor="gemini-pro",
         estimated_time_min=2,
-        estimated_cost_yen=100
+        estimated_cost_yen=30
     ),
     "full": ModeConfig(
         id="full",
         name="Full",
-        name_ja="フル",
-        description="4ライター、20評価。全モデル×全ペルソナの完全分析。",
-        default_writers=["opus", "gpt", "gemini", "grok"],
+        name_ja="プロ",
+        description="最高品質。Claude/GPT含む完全分析。",
+        default_writers=["claude-sonnet", "gpt-4o", "gemini-pro", "deepseek-chat"],
         default_matrix=[
             (llm, persona)
-            for llm in ["opus", "gpt", "gemini", "grok"]
+            for llm in ["claude-sonnet", "gpt-4o", "gemini-pro", "deepseek-chat"]
             for persona in ["nikkei", "lifestyle", "web", "trade", "tv"]
         ],
-        default_editor="opus",
+        default_editor="claude-sonnet",
         estimated_time_min=5,
-        estimated_cost_yen=200
+        estimated_cost_yen=150
     ),
 }
 
