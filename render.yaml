@@ -20,7 +20,6 @@ services:
   - type: web
     name: press-council-web
     runtime: static
-    region: singapore
     plan: free
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
