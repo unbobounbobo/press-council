@@ -6,14 +6,112 @@ import ChatInterface from './components/ChatInterface';
 import { api } from './api';
 import './App.css';
 
-// Persona display info
+// Persona display info with evaluation axes
 const PERSONA_INFO = {
-  nikkei: { name: '日経記者', emoji: '📰', color: 'nikkei' },
-  lifestyle: { name: '全国紙生活部', emoji: '🏠', color: 'lifestyle' },
-  web: { name: 'Web記者', emoji: '💻', color: 'web' },
-  trade: { name: '業界専門誌', emoji: '🔧', color: 'trade' },
-  tv: { name: '経済テレビ', emoji: '📺', color: 'tv' },
+  nikkei: { name: '経済ビジネス紙', emoji: '📰', color: 'nikkei', axis: 'ビジネス性' },
+  lifestyle: { name: '全国紙生活部', emoji: '🏠', color: 'lifestyle', axis: '一般訴求' },
+  web: { name: 'Web記者', emoji: '💻', color: 'web', axis: 'Web適性' },
+  trade: { name: '業界専門誌', emoji: '🔧', color: 'trade', axis: '専門性' },
+  tv: { name: '経済テレビ', emoji: '📺', color: 'tv', axis: '話題性' },
 };
+
+// Radar chart component for media evaluation
+function RadarChart({ scores, size = 200 }) {
+  const axes = ['ビジネス性', '一般訴求', 'Web適性', '専門性', '話題性'];
+  const centerX = size / 2;
+  const centerY = size / 2;
+  const radius = size * 0.35;
+
+  // Calculate points for polygon
+  const getPoint = (index, value) => {
+    const angle = (Math.PI * 2 * index) / 5 - Math.PI / 2;
+    const r = (value / 100) * radius;
+    return {
+      x: centerX + r * Math.cos(angle),
+      y: centerY + r * Math.sin(angle),
+    };
+  };
+
+  // Generate grid lines
+  const gridLevels = [20, 40, 60, 80, 100];
+
+  return (
+    <svg width={size} height={size} className="radar-chart">
+      {/* Grid */}
+      {gridLevels.map((level) => (
+        <polygon
+          key={level}
+          points={axes.map((_, i) => {
+            const p = getPoint(i, level);
+            return `${p.x},${p.y}`;
+          }).join(' ')}
+          fill="none"
+          stroke="var(--border-light)"
+          strokeWidth="1"
+        />
+      ))}
+
+      {/* Axis lines */}
+      {axes.map((_, i) => {
+        const p = getPoint(i, 100);
+        return (
+          <line
+            key={i}
+            x1={centerX}
+            y1={centerY}
+            x2={p.x}
+            y2={p.y}
+            stroke="var(--border-default)"
+            strokeWidth="1"
+          />
+        );
+      })}
+
+      {/* Data polygon */}
+      <polygon
+        points={axes.map((axis, i) => {
+          const p = getPoint(i, scores[axis] || 0);
+          return `${p.x},${p.y}`;
+        }).join(' ')}
+        fill="rgba(255, 204, 0, 0.3)"
+        stroke="var(--accent-primary)"
+        strokeWidth="2"
+      />
+
+      {/* Data points */}
+      {axes.map((axis, i) => {
+        const p = getPoint(i, scores[axis] || 0);
+        return (
+          <circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r="4"
+            fill="var(--accent-primary)"
+          />
+        );
+      })}
+
+      {/* Labels */}
+      {axes.map((axis, i) => {
+        const p = getPoint(i, 120);
+        return (
+          <text
+            key={i}
+            x={p.x}
+            y={p.y}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="10"
+            fill="var(--text-secondary)"
+          >
+            {axis}
+          </text>
+        );
+      })}
+    </svg>
+  );
+}
 
 // Main application content (only rendered when authenticated)
 function MainApp() {
@@ -43,19 +141,48 @@ function MainApp() {
 
   // Extract evaluation data from metadata
   const evaluationData = useMemo(() => {
+    console.log('latestAssistantMsg:', latestAssistantMsg);
+    console.log('metadata:', latestAssistantMsg?.metadata);
     if (!latestAssistantMsg?.metadata) return null;
     const { aggregate_rankings, label_to_model, persona_breakdown } = latestAssistantMsg.metadata;
+    console.log('aggregate_rankings:', aggregate_rankings);
+    console.log('persona_breakdown:', persona_breakdown);
+    console.log('label_to_model:', label_to_model);
     if (!aggregate_rankings) return null;
 
     // Calculate average score (inverse of avg_rank, scaled to 100)
     const topRanking = aggregate_rankings[0];
     const avgScore = topRanking ? Math.round((1 - (topRanking.avg_rank - 1) / 3) * 100) : 0;
 
+    // Calculate radar scores per persona (from persona_breakdown)
+    const radarScores = {
+      'ビジネス性': 70,
+      '一般訴求': 70,
+      'Web適性': 70,
+      '専門性': 70,
+      '話題性': 70,
+    };
+
+    // If persona_breakdown exists, calculate scores based on how each persona ranked the top draft
+    if (persona_breakdown && topRanking) {
+      const topLabel = topRanking.label;
+      Object.entries(persona_breakdown).forEach(([persona, rankings]) => {
+        const personaInfo = PERSONA_INFO[persona];
+        if (personaInfo && rankings[topLabel]) {
+          // Convert rank (1-4) to score (100-25)
+          const rank = rankings[topLabel];
+          const score = Math.round((1 - (rank - 1) / 3) * 100);
+          radarScores[personaInfo.axis] = score;
+        }
+      });
+    }
+
     return {
       score: avgScore,
       rankings: aggregate_rankings,
       labelToModel: label_to_model,
       personaBreakdown: persona_breakdown,
+      radarScores,
     };
   }, [latestAssistantMsg]);
 
@@ -244,12 +371,20 @@ function MainApp() {
               break;
 
             case 'stage2_complete':
+              console.log('stage2_complete event:', event);
+              console.log('stage2_complete metadata:', event.metadata);
               setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                lastMsg.stage2 = event.data;
-                lastMsg.metadata = event.metadata;
-                lastMsg.loading.stage2 = false;
+                const messages = prev.messages.map((msg, idx) => {
+                  if (idx === prev.messages.length - 1) {
+                    return {
+                      ...msg,
+                      stage2: event.data,
+                      metadata: event.metadata,
+                      loading: { ...msg.loading, stage2: false },
+                    };
+                  }
+                  return msg;
+                });
                 return { ...prev, messages };
               });
               break;
@@ -267,10 +402,16 @@ function MainApp() {
 
             case 'stage3_complete':
               setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                lastMsg.stage3 = event.data;
-                lastMsg.loading.stage3 = false;
+                const messages = prev.messages.map((msg, idx) => {
+                  if (idx === prev.messages.length - 1) {
+                    return {
+                      ...msg,
+                      stage3: event.data,
+                      loading: { ...msg.loading, stage3: false },
+                    };
+                  }
+                  return msg;
+                });
                 return { ...prev, messages };
               });
               break;
@@ -425,12 +566,20 @@ function MainApp() {
 
           {evaluationData ? (
             <>
+              {/* Radar Chart - Media Evaluation */}
+              <div className="radar-section">
+                <div className="radar-title">メディア適性</div>
+                <div className="radar-container">
+                  <RadarChart scores={evaluationData.radarScores} size={180} />
+                </div>
+              </div>
+
               {/* Score Card */}
               <div className="score-card">
                 <div className="score-header">
-                  <span className="score-label">PR SCORE</span>
+                  <span className="score-label">総合スコア</span>
+                  <span className="score-value-large">{evaluationData.score}</span>
                 </div>
-                <div className="score-value">{evaluationData.score}</div>
                 <div className="score-bar">
                   <div
                     className="score-bar-fill"
@@ -438,64 +587,83 @@ function MainApp() {
                   ></div>
                 </div>
                 <div className={`score-verdict ${evaluationData.score >= 70 ? 'good' : evaluationData.score >= 50 ? 'ok' : 'needs-work'}`}>
-                  {evaluationData.score >= 70 ? '✓ 配布推奨' : evaluationData.score >= 50 ? '△ 要改善' : '✕ 再検討'}
+                  {evaluationData.score >= 70 ? '配布推奨' : evaluationData.score >= 50 ? '要改善' : '再検討'}
                 </div>
               </div>
 
-              {/* Ranking Summary */}
-              <div className="ranking-summary">
-                <div className="ranking-title">総合ランキング</div>
-                {evaluationData.rankings.slice(0, 3).map((rank, idx) => (
+              {/* Anonymous Ranking */}
+              <div className="ranking-section">
+                <div className="ranking-title">匿名ランキング</div>
+                <div className="ranking-subtitle">記者による投票結果（モデル名は後から公開）</div>
+                {evaluationData.rankings.slice(0, 4).map((rank, idx) => (
                   <div key={idx} className={`ranking-item rank-${idx + 1}`}>
-                    <span className="ranking-position">{idx + 1}位</span>
-                    <span className="ranking-label">{rank.label}</span>
-                    <span className="ranking-model">
-                      {evaluationData.labelToModel?.[rank.label] || '-'}
+                    <span className={`ranking-medal ${idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? 'bronze' : ''}`}>
+                      {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}`}
+                    </span>
+                    <div className="ranking-content">
+                      <span className="ranking-label">{rank.label}</span>
+                      <span className="ranking-score">avg: {rank.avg_rank?.toFixed(2) || '-'}</span>
+                    </div>
+                    <span className="ranking-model-reveal">
+                      {evaluationData.labelToModel?.[rank.label] || '???'}
                     </span>
                   </div>
                 ))}
               </div>
 
-              {/* Evaluator Comments */}
-              <div className="evaluator-section-title">記者コメント</div>
-              {evaluatorComments.map((comment, idx) => {
-                const info = PERSONA_INFO[comment.persona] || { name: comment.persona, emoji: '📝', color: 'default' };
-                return (
-                  <div key={idx} className="evaluator-comment">
-                    <div className="evaluator-header">
-                      <div className={`evaluator-avatar ${info.color}`}>{info.emoji}</div>
-                      <div className="evaluator-info">
-                        <div className="evaluator-name">
-                          {info.name}
-                          {comment.ranking && (
-                            <span className="evaluator-badge">1位: {comment.ranking[0]}</span>
-                          )}
-                        </div>
-                        <div className="evaluator-meta">{comment.model}</div>
+              {/* Persona Breakdown */}
+              <div className="persona-section">
+                <div className="persona-title">記者別評価</div>
+                {Object.entries(PERSONA_INFO).map(([personaId, info]) => {
+                  const personaRankings = evaluationData.personaBreakdown?.[personaId];
+                  if (!personaRankings) return null;
+
+                  // Find top pick for this persona
+                  const topPick = Object.entries(personaRankings)
+                    .sort(([,a], [,b]) => a - b)[0];
+
+                  return (
+                    <div key={personaId} className={`persona-card ${info.color}`}>
+                      <div className="persona-header">
+                        <span className="persona-emoji">{info.emoji}</span>
+                        <span className="persona-name">{info.name}</span>
+                      </div>
+                      <div className="persona-pick">
+                        <span className="pick-label">1位:</span>
+                        <span className="pick-value">{topPick?.[0] || '-'}</span>
+                        <span className="pick-model">
+                          ({evaluationData.labelToModel?.[topPick?.[0]] || '-'})
+                        </span>
                       </div>
                     </div>
-                    {comment.ranking && (
-                      <div className="evaluator-text">
-                        2位: {comment.ranking[1] || '-'}, 3位: {comment.ranking[2] || '-'}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </>
           ) : isLoading ? (
             <div className="evaluation-loading">
               <div className="loading-spinner"></div>
-              <p>評価中...</p>
+              <p>記者が評価中...</p>
             </div>
           ) : (
             <div className="evaluation-empty">
-              <p>プレスリリースを作成すると、記者による評価がここに表示されます</p>
-              <ul>
-                <li>総合スコア</li>
-                <li>ドラフトランキング</li>
-                <li>5種類の記者視点</li>
-              </ul>
+              <div className="empty-icon">📊</div>
+              <h3>記者による評価</h3>
+              <p>プレスリリースを作成すると、5種類の記者視点で評価されます</p>
+              <div className="empty-features">
+                <div className="empty-feature">
+                  <span className="feature-icon">📈</span>
+                  <span>メディア適性レーダー</span>
+                </div>
+                <div className="empty-feature">
+                  <span className="feature-icon">🏆</span>
+                  <span>匿名ランキング</span>
+                </div>
+                <div className="empty-feature">
+                  <span className="feature-icon">👥</span>
+                  <span>記者別フィードバック</span>
+                </div>
+              </div>
             </div>
           )}
         </aside>

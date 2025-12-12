@@ -18,6 +18,8 @@ from .config import (
     CRITICISM_LEVELS,
     DEFAULT_MODE,
     DEFAULT_CRITICISM_LEVEL,
+    EVALUATOR_MODELS,
+    EDITOR_MODELS,
     get_mode_config,
     get_config_for_api,
 )
@@ -110,6 +112,7 @@ async def get_modes():
             "name_ja": config.name_ja,
             "description": config.description,
             "default_writers": config.default_writers,
+            "default_evaluators": config.default_evaluators,
             "default_matrix": config.default_matrix,
             "default_editor": config.default_editor,
             "estimated_time_min": config.estimated_time_min,
@@ -135,7 +138,11 @@ async def get_llm_blocks():
             "description": block.description,
             "cost_factor": block.cost_factor,
         })
-    return {"blocks": blocks}
+    return {
+        "blocks": blocks,
+        "evaluator_models": EVALUATOR_MODELS,
+        "editor_models": EDITOR_MODELS,
+    }
 
 
 @app.get("/api/config/personas")

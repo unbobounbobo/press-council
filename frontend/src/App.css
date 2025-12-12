@@ -439,93 +439,263 @@
   color: var(--error);
 }
 
-/* Ranking Summary */
-.ranking-summary {
+/* Radar Chart Section */
+.radar-section {
   background: var(--bg-primary);
   border-radius: var(--radius-md);
   padding: var(--space-md);
-  margin-bottom: var(--space-lg);
+  margin-bottom: var(--space-md);
+  border: 1px solid var(--border-light);
+}
+
+.radar-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-align: center;
+  margin-bottom: var(--space-sm);
+}
+
+.radar-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.radar-chart {
+  display: block;
+}
+
+/* Score Card - Enhanced */
+.score-card {
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  border: 1px solid var(--border-light);
+}
+
+.score-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.score-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.score-value-large {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+
+/* Ranking Section - Anonymous */
+.ranking-section {
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
   border: 1px solid var(--border-light);
 }
 
 .ranking-title {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--text-tertiary);
-  margin-bottom: var(--space-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.ranking-subtitle {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  margin-bottom: var(--space-md);
 }
 
 .ranking-item {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-xs) 0;
-  border-bottom: 1px solid var(--border-light);
+  padding: var(--space-sm);
+  margin-bottom: var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  transition: all 0.15s;
 }
 
-.ranking-item:last-child {
-  border-bottom: none;
+.ranking-item:hover {
+  background: var(--bg-tertiary);
 }
 
 .ranking-item.rank-1 {
-  background: rgba(255, 204, 0, 0.1);
-  margin: 0 calc(var(--space-md) * -1);
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 193, 7, 0.1));
+  border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
-.ranking-position {
+.ranking-item.rank-2 {
+  background: linear-gradient(135deg, rgba(192, 192, 192, 0.15), rgba(169, 169, 169, 0.1));
+}
+
+.ranking-item.rank-3 {
+  background: linear-gradient(135deg, rgba(205, 127, 50, 0.15), rgba(184, 115, 51, 0.1));
+}
+
+.ranking-medal {
+  font-size: 1.25rem;
+  width: 28px;
+  text-align: center;
+}
+
+.ranking-medal:not(.gold):not(.silver):not(.bronze) {
   font-size: 0.75rem;
-  font-weight: 600;
-  width: 32px;
-  color: var(--text-primary);
+  color: var(--text-muted);
 }
 
-.ranking-item.rank-1 .ranking-position {
-  color: var(--accent-secondary);
+.ranking-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .ranking-label {
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
-.ranking-model {
+.ranking-score {
+  font-size: 0.625rem;
+  color: var(--text-muted);
+}
+
+.ranking-model-reveal {
   font-size: 0.6875rem;
   color: var(--text-tertiary);
-  margin-left: auto;
+  padding: 2px 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+/* Persona Section */
+.persona-section {
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  border: 1px solid var(--border-light);
+}
+
+.persona-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-md);
+}
+
+.persona-card {
+  padding: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--border-default);
+}
+
+.persona-card:last-child {
+  margin-bottom: 0;
+}
+
+.persona-card.nikkei { border-left-color: #4285f4; background: rgba(66, 133, 244, 0.05); }
+.persona-card.lifestyle { border-left-color: #e91e63; background: rgba(233, 30, 99, 0.05); }
+.persona-card.web { border-left-color: #9c27b0; background: rgba(156, 39, 176, 0.05); }
+.persona-card.trade { border-left-color: #34a853; background: rgba(52, 168, 83, 0.05); }
+.persona-card.tv { border-left-color: #ff9800; background: rgba(255, 152, 0, 0.05); }
+
+.persona-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xs);
+}
+
+.persona-emoji {
+  font-size: 1rem;
+}
+
+.persona-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.persona-pick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 0.6875rem;
+}
+
+.pick-label {
+  color: var(--text-muted);
+}
+
+.pick-value {
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.pick-model {
+  color: var(--text-tertiary);
 }
 
 /* Evaluation Empty/Loading States */
 .evaluation-empty {
   text-align: center;
   padding: var(--space-xl) var(--space-md);
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+
+.evaluation-empty .empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: var(--space-md);
+}
+
+.evaluation-empty h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-sm);
 }
 
 .evaluation-empty p {
   font-size: 0.8125rem;
   color: var(--text-tertiary);
   line-height: 1.6;
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--space-lg);
 }
 
-.evaluation-empty ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.empty-features {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.empty-feature {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
-.evaluation-empty li {
-  padding: var(--space-xs) 0;
-}
-
-.evaluation-empty li::before {
-  content: '•';
-  margin-right: var(--space-xs);
-  color: var(--accent-primary);
+.empty-feature .feature-icon {
+  font-size: 1rem;
 }
 
 .evaluation-loading {
